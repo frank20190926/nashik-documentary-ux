@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nashik Through Time — Interactive Documentary UX System &amp; Transition Architecture</title>
+<meta name="description" content="UX architecture and interactive state-machine specification: how a viewer moves between video, text and other ways of consuming information in the Nashik Through Time documentary.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F7F4EE; --paper2:#EFE9DD; --card:#FFFDF8;
+  --ink:#1C1917; --ink2:#57534E; --ink3:#8A837B;
+  --rule:rgba(28,25,23,.16); --rule2:rgba(28,25,23,.08);
+  --terra:#B45309; --terra-soft:#F4E2CB; --terra-line:rgba(180,83,9,.45);
+  --serif:'Newsreader',Georgia,serif; --sans:'Plus Jakarta Sans',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  --hdr:92px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--hdr) + 12px)}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 28px}
+.mono{font-family:var(--mono)}
+.eyebrow{font:500 11.5px/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--terra)}
+
+/* header */
+.hdr{position:sticky;top:0;z-index:50;background:rgba(247,244,238,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--ink)}
+.hdr .wrap{display:flex;flex-direction:column;gap:6px;padding-top:10px;padding-bottom:8px}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.hdr h1{margin:0;font:500 19px/1.25 var(--serif);letter-spacing:-.005em}
+.hdr h1 span{color:var(--terra);font-style:italic}
+.back{white-space:nowrap;font:600 12.5px/1 var(--sans);text-decoration:none;border:1px solid var(--ink);padding:9px 14px;background:var(--ink);color:var(--paper);transition:background .15s,color .15s}
+.back:hover{background:var(--terra);border-color:var(--terra)}
+.nav{display:flex;gap:4px;flex-wrap:wrap;font:500 11.5px/1 var(--mono);letter-spacing:.02em}
+.nav a{text-decoration:none;color:var(--ink2);padding:5px 10px 5px 0;margin-right:10px;border-bottom:2px solid transparent}
+.nav a b{color:var(--terra);font-weight:500;margin-right:6px}
+.nav a:hover,.nav a.cur{color:var(--ink);border-bottom-color:var(--terra)}
+
+/* hero */
+.hero{position:relative;border-bottom:1px solid var(--rule);background:
+  linear-gradient(var(--rule2) 1px,transparent 1px) 0 0/28px 28px,
+  linear-gradient(90deg,var(--rule2) 1px,transparent 1px) 0 0/28px 28px}
+.hero .wrap{padding-top:64px;padding-bottom:56px;display:grid;grid-template-columns:1.25fr 1fr;gap:56px;align-items:end}
+.hero h2{margin:14px 0 18px;font:400 clamp(36px,5vw,60px)/1.05 var(--serif);letter-spacing:-.02em}
+.hero h2 em{color:var(--terra)}
+.hero blockquote{margin:0;padding:0 0 0 16px;border-left:2px solid var(--terra);font:italic 400 18px/1.5 var(--serif);color:var(--ink2);max-width:560px}
+.hero blockquote cite{display:block;margin-top:8px;font:400 11px/1.4 var(--mono);font-style:normal;letter-spacing:.04em;color:var(--ink3)}
+.laws{list-style:none;margin:0;padding:0;counter-reset:l;border-top:1px solid var(--ink)}
+.laws li{counter-increment:l;display:grid;grid-template-columns:34px 1fr;gap:6px;padding:14px 0;border-bottom:1px solid var(--rule)}
+.laws li::before{content:"L" counter(l);font:600 12px/1.9 var(--mono);color:var(--terra)}
+.laws strong{display:block;font:600 15px/1.35 var(--sans)}
+.laws span{font-size:14px;color:var(--ink2);line-height:1.5}
+
+/* sections */
+section.sec{padding:84px 0 24px;border-bottom:1px solid var(--rule)}
+.sec-head{display:grid;grid-template-columns:120px 1fr;gap:20px;margin-bottom:36px}
+.sec-no{font:500 13px/1.4 var(--mono);color:var(--terra);padding-top:10px;border-top:2px solid var(--terra);align-self:start}
+.sec-head h2{margin:0 0 10px;font:500 clamp(28px,3.4vw,40px)/1.12 var(--serif);letter-spacing:-.015em}
+.sec-head p{margin:0;max-width:760px;color:var(--ink2);font-size:16.5px}
+.note{font:400 12px/1.5 var(--mono);color:var(--ink3);margin:18px 0 0;max-width:820px}
+.card{background:var(--card);border:1px solid var(--ink)}
+.lbl{font:500 10.5px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.btn-link{background:none;border:0;padding:0;font:600 13px/1.4 var(--sans);color:var(--terra);text-decoration:underline;text-underline-offset:3px}
+.btn-link:hover{color:var(--ink)}
+
+/* ---- SVG wireframe vocabulary ---- */
+svg text{font-family:var(--sans)}
+.fr{fill:#FFFDF8;stroke:#1C1917;stroke-width:1.8}
+.vid{fill:#2B2622}
+.vid2{fill:#2B2622}
+.hill{fill:#4B443C}
+.hill2{fill:#5C544A}
+.wl{fill:none;stroke:#1C1917;stroke-width:1}
+.wf{fill:#E7E0D1}
+.wfd{fill:#CFC7B6}
+.fcard{fill:#FFFDF8;stroke:#1C1917;stroke-width:1}
+.tx{font-size:9px;font-weight:600;fill:#1C1917}
+.tx-s{font-size:7px;font-weight:500;fill:#57534E}
+.tx-w{font-size:8px;font-weight:600;fill:#fff}
+.tx-ws{font-size:6.8px;font-weight:500;fill:rgba(255,255,255,.75)}
+.tx-m{font-family:var(--mono);font-size:6.5px;fill:#fff}
+.tx-serif{font-family:var(--serif);font-size:13px;font-weight:600;fill:#1C1917}
+.tc{fill:#B45309}
+.tcs{fill:#F4E2CB;stroke:#B45309;stroke-width:1}
+.pill{fill:#FFFDF8;stroke:#1C1917;stroke-width:1.2}
+.pillok{fill:#F4E2CB;stroke:#B45309;stroke-width:1.2}
+.bub{fill:#FFFDF8;stroke:#B45309;stroke-width:1.2}
+.ln-w{stroke:rgba(255,255,255,.4);stroke-width:2;stroke-linecap:round}
+.ln-t{stroke:#B45309;stroke-width:2;stroke-linecap:round}
+.ln-wh{stroke:#fff;stroke-width:1.2}
+.leader{stroke:#B45309;stroke-width:.8;stroke-dasharray:2 2;fill:none}
+.mk-c{fill:#B45309}
+.mk-t{font-family:var(--mono);font-size:8px;font-weight:600;fill:#fff;text-anchor:middle}
+.ringarc{fill:none;stroke:#B45309;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:69.1;transform:rotate(-90deg);transform-origin:center;transform-box:fill-box;animation:ring 8s linear infinite}
+@keyframes ring{from{stroke-dashoffset:0}to{stroke-dashoffset:69.1}}
+@media (prefers-reduced-motion:reduce){.ringarc{animation:none;stroke-dashoffset:23}html{scroll-behavior:auto}}
+.dash{stroke-dasharray:3 3}
+
+/* ---- Section 1 ---- */
+.modes{display:grid;grid-template-columns:300px 1fr;gap:44px;align-items:start}
+.phone-col{position:sticky;top:calc(var(--hdr) + 20px)}
+.phone-col .cap{margin-top:10px;text-align:center}
+.ph{display:block;width:100%;max-width:300px;margin:0 auto;height:auto}
+.mode-tabs{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--ink);background:var(--card)}
+.mode-tab{text-align:left;border:0;border-right:1px solid var(--ink);background:transparent;padding:14px 16px 14px;position:relative;transition:background .15s}
+.mode-tab:last-child{border-right:0}
+.mode-tab .k{display:block;font:500 10.5px/1.3 var(--mono);letter-spacing:.1em;color:var(--ink3);text-transform:uppercase}
+.mode-tab .n{display:block;font:500 17px/1.25 var(--serif);margin:3px 0 6px}
+.mode-tab .f{display:block;font:500 11.5px/1.3 var(--mono);color:var(--terra)}
+.mode-tab[aria-selected=true]{background:var(--ink);color:var(--paper)}
+.mode-tab[aria-selected=true] .k{color:#CFC7B6}
+.mode-tab[aria-selected=true] .f{color:#F2B77A}
+.mode-tab:not([aria-selected=true]):hover{background:var(--paper2)}
+.mode-body{padding:26px 4px 0}
+.mode-body h3{margin:0 0 6px;font:500 28px/1.15 var(--serif)}
+.mode-body .intent{margin:0 0 22px;color:var(--ink2);font-size:16.5px;max-width:640px}
+.cols2{display:grid;grid-template-columns:1.1fr 1fr;gap:32px}
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;border-top:1px solid var(--ink)}
+.steps li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;padding:11px 0;border-bottom:1px solid var(--rule);font-size:15px;line-height:1.5}
+.steps li::before{content:counter(s);font:600 12px/1.9 var(--mono);color:var(--terra)}
+.steps code,.inl{font:500 12.5px var(--mono);background:var(--terra-soft);padding:1px 6px;border:1px solid var(--terra-line)}
+.metrics{border-top:1px solid var(--ink)}
+.metric{display:grid;grid-template-columns:128px 1fr;gap:10px;padding:11px 0;border-bottom:1px solid var(--rule);align-items:center}
+.metric .lbl{align-self:start;padding-top:3px}
+.metric .v{font-size:14.5px;line-height:1.4}
+.pips{display:inline-flex;gap:3px;margin-right:8px;vertical-align:middle}
+.pips i{width:16px;height:7px;border:1px solid var(--ink);background:transparent}
+.pips i.on{background:var(--terra);border-color:var(--terra)}
+.mode-links{margin-top:18px;display:flex;gap:20px;flex-wrap:wrap}
+
+.compare{margin-top:56px}
+.compare h3,.sub-h{margin:0 0 6px;font:500 24px/1.2 var(--serif)}
+.compare>p,.sub-p{margin:0 0 18px;color:var(--ink2);max-width:720px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--ink);background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
+tr:last-child td{border-bottom:0}
+thead th{font:500 10.5px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);background:var(--paper2);border-bottom:1px solid var(--ink);white-space:nowrap}
+tbody th{font:600 14px/1.4 var(--sans)}
+.hl-col{background:rgba(244,226,203,.55)}
+.calc{margin-top:32px;display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--ink);background:var(--card)}
+.calc>div{padding:22px 24px}
+.calc>div+div{border-left:1px solid var(--ink);background:var(--paper2)}
+.calc label{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:14px;margin-bottom:16px}
+.calc label output{font:600 13px var(--mono);color:var(--terra)}
+.calc input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--terra)}
+.big{font:500 40px/1 var(--serif);letter-spacing:-.02em}
+.big small{font:500 12px var(--mono);letter-spacing:.04em;color:var(--ink3);margin-left:8px}
+.calc .out p{margin:10px 0 0;font-size:14px;color:var(--ink2)}
+.calc .out .lbl{margin-bottom:10px}
+.ev td.mono{white-space:nowrap}
+
+/* ---- Section 2 ---- */
+.sm-tools{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--ink);background:var(--card)}
+.seg button{border:0;border-right:1px solid var(--ink);background:transparent;padding:9px 14px;font:500 12px/1.2 var(--mono)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.stepper{display:flex;align-items:center;gap:10px;font:500 12px var(--mono);color:var(--ink2)}
+.stepper button{border:1px solid var(--ink);background:var(--card);padding:8px 14px;font:600 12px var(--sans)}
+.stepper button:hover:not(:disabled){background:var(--terra);color:#fff;border-color:var(--terra)}
+.stepper button:disabled{opacity:.35;cursor:default}
+.sm-scroll{overflow-x:auto;border:1px solid var(--ink);background:var(--card);background-image:linear-gradient(var(--rule2) 1px,transparent 1px),linear-gradient(90deg,var(--rule2) 1px,transparent 1px);background-size:28px 28px}
+.sm{position:relative;min-width:1060px;padding:56px 24px 56px}
+.sm-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:auto auto;column-gap:56px;row-gap:26px}
+.sm svg.links{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
+.node{position:relative;text-align:left;background:var(--card);border:1px solid var(--ink);padding:10px 10px 12px;display:flex;gap:10px;align-items:flex-start;align-self:center;transition:transform .15s,box-shadow .15s,background .15s}
+.node:hover{transform:translateY(-2px)}
+.node .th{flex:0 0 62px}
+.node .th svg{width:62px;height:auto;display:block}
+.node .tx2{min-width:0}
+.node .k{display:block;font:600 10.5px/1.3 var(--mono);letter-spacing:.06em;color:var(--terra)}
+.node .t{display:block;font:500 15px/1.2 var(--serif);margin:3px 0 4px}
+.node .d{display:block;font:500 10.5px/1.35 var(--mono);color:var(--ink3)}
+.node.onp{background:#FBF1E2}
+.node.active{background:var(--ink);color:var(--paper);box-shadow:5px 5px 0 var(--terra);transform:translate(-2px,-2px)}
+.node.active .k{color:#F2B77A}.node.active .d{color:#CFC7B6}
+.node.active .th svg .fr{fill:#FFFDF8}
+.n-s1{grid-column:1;grid-row:1/3}.n-s2{grid-column:2;grid-row:1/3}.n-s3a{grid-column:3;grid-row:1}.n-s3b{grid-column:3;grid-row:2}.n-s4{grid-column:4;grid-row:1/3}.n-s5{grid-column:5;grid-row:1/3}
+.sm-hint{font:400 12px var(--mono);color:var(--ink3);margin:10px 0 0}
+
+.detail{margin-top:28px;display:grid;grid-template-columns:300px 1fr;gap:0;border:1px solid var(--ink);background:var(--card)}
+.detail .dph{padding:22px 18px;background:var(--paper2);border-right:1px solid var(--ink)}
+.detail .legend{list-style:none;margin:14px 0 0;padding:0;font-size:12.5px;line-height:1.4;color:var(--ink2)}
+.detail .legend li{display:grid;grid-template-columns:20px 1fr;gap:6px;padding:3px 0}
+.detail .legend b{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--terra);color:#fff;font:600 9.5px var(--mono)}
+.detail .dbody{padding:26px 30px}
+.detail h3{margin:6px 0 4px;font:500 30px/1.12 var(--serif)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 22px}
+.chip{font:500 11.5px/1 var(--mono);padding:6px 9px;border:1px solid var(--ink);background:var(--paper)}
+.chip.t{background:var(--terra-soft);border-color:var(--terra);color:#7C3A06}
+.spec{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}
+.spec section{border-top:1px solid var(--ink);padding:12px 0 18px}
+.spec h4{margin:0 0 6px;font:500 10.5px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--terra)}
+.spec p{margin:0;font-size:14.5px;line-height:1.55}
+.spec ul{margin:0;padding-left:18px;font-size:14px;line-height:1.5}
+.spec li{margin-bottom:6px}
+.spec .wide{grid-column:1/-1}
+.spec .wide ul{columns:2;column-gap:32px}
+.spec .wide li{break-inside:avoid}
+
+/* ---- Section 3 ---- */
+.inv{display:grid;grid-template-columns:300px 1fr;gap:44px;align-items:start}
+.inv-img{position:relative;border:1px solid var(--ink);background:#000;line-height:0}
+.inv-img img{width:100%;height:auto;display:block;filter:saturate(.9)}
+.hot{position:absolute;border:1.5px solid transparent;border-radius:6px;transition:all .15s;pointer-events:none}
+.hot.on{border-color:var(--terra);background:rgba(180,83,9,.28);box-shadow:0 0 0 2px rgba(255,253,248,.9)}
+.inv-list{border-top:1px solid var(--ink)}
+.inv-row{display:grid;grid-template-columns:30px 1.1fr 1.6fr;gap:14px;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--rule);padding:10px 8px;align-items:start}
+.inv-row:hover,.inv-row.on{background:var(--terra-soft)}
+.inv-row .n{font:600 12px/1.7 var(--mono);color:var(--terra)}
+.inv-row .a{font:600 14px/1.45}
+.inv-row .b{font-size:13.5px;line-height:1.45;color:var(--ink2)}
+.inv-row .b em{font:500 11px var(--mono);font-style:normal;color:var(--terra);display:block;margin-top:2px}
+.era-scroll{overflow-x:auto;margin:48px 0 6px}
+.era-rail{position:relative;display:grid;grid-template-columns:repeat(6,1fr);min-width:620px;padding-top:6px}
+.era-rail::before{content:"";position:absolute;left:8.33%;right:8.33%;top:19px;height:2px;background:#C9C1B1}
+.era-btn{position:relative;background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 4px 4px}
+.era-btn i{width:26px;height:26px;border-radius:50%;background:var(--paper);border:2px solid #8A837B;display:block;position:relative;z-index:1;transition:all .15s}
+.era-btn b{font:600 14px/1.2 var(--sans);padding:4px 10px;border-radius:12px}
+.era-btn span{font:400 10.5px/1.3 var(--mono);color:var(--ink3);text-align:center;max-width:150px}
+.era-btn[aria-pressed=true] i{border-color:var(--terra);border-width:5px;background:var(--card);transform:scale(1.15)}
+.era-btn[aria-pressed=true] b{background:var(--terra-soft)}
+.era-btn:hover i{border-color:var(--terra)}
+.era-sel-note{text-align:center;font:400 12px var(--mono);color:var(--ink3);margin:0 0 30px}
+tr.eraon td,tr.eraon th{background:rgba(244,226,203,.6)}
+.ev td{font-size:13.5px;line-height:1.45}
+.ev .tag{display:inline-block;font:500 10px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 5px;margin-bottom:5px;border:1px solid var(--ink3);color:var(--ink3)}
+.ev .tag.ex{border-color:var(--terra);color:var(--terra)}
+.ev .chip-ex{font-weight:600}
+.mx{display:grid;grid-template-columns:110px repeat(3,1fr);border:1px solid var(--ink);background:var(--card)}
+.mx>*{padding:14px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);font-size:13.5px;line-height:1.5}
+.mx>*:nth-child(4n){border-right:0}
+.mx .h{background:var(--paper2);border-bottom:1px solid var(--ink)}
+.mx .h .lbl{display:block}
+.mx .h b{font:500 17px/1.25 var(--serif);display:block;margin-top:2px}
+.mx .h small{display:block;font:400 11.5px/1.4 var(--sans);color:var(--ink2);margin-top:2px}
+.mx .rh{background:var(--paper2);border-right:1px solid var(--ink);display:flex;flex-direction:column;gap:2px}
+.mx .rh b{font:600 14px var(--sans)}
+.mx .rh span{font:400 11px/1.4 var(--mono);color:var(--ink3)}
+.mx button.c{text-align:left;background:transparent;border-top:0;border-left:0;transition:background .12s}
+.mx button.c:hover{background:rgba(244,226,203,.5)}
+.mx button.c[aria-pressed=true]{background:var(--terra-soft);box-shadow:inset 0 0 0 2px var(--terra)}
+.mx .c .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.mx .c .tags i{font:500 9.5px/1 var(--mono);font-style:normal;padding:3px 5px;border:1px solid var(--ink3);color:var(--ink2);background:var(--paper)}
+.mx .last{border-bottom:0}
+.cdetail{margin-top:0;border:1px solid var(--ink);border-top:0;background:var(--ink);color:var(--paper);display:grid;grid-template-columns:1.1fr repeat(3,1fr);gap:0}
+.cdetail>div{padding:16px 18px;border-right:1px solid rgba(255,255,255,.18)}
+.cdetail>div:last-child{border-right:0}
+.cdetail .lbl{color:#CFC7B6;display:block;margin-bottom:4px}
+.cdetail b{font:500 18px/1.25 var(--serif)}
+.cdetail p{margin:0;font-size:13.5px;line-height:1.5}
+.cdetail .stref{background:none;border:0;padding:0;color:#F2B77A;font:600 13px var(--sans);text-decoration:underline;text-underline-offset:3px;margin-top:6px}
+.dims{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ink);background:var(--card);margin-bottom:44px}
+.dims>div{padding:16px 18px;border-right:1px solid var(--rule)}
+.dims>div:last-child{border-right:0}
+.dims .big{font-size:44px}
+.dims p{margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--ink2)}
+
+/* ---- Section 4 ---- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.filters button{border:1px solid var(--ink);background:var(--card);padding:7px 12px;font:500 12px/1 var(--mono)}
+.filters button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.dm td:first-child{width:150px}
+.dm .cat{font:500 10.5px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--terra)}
+.dm .prob{font:500 15.5px/1.4 var(--serif)}
+.dm td.std{color:var(--ink2)}
+.dm td.sol strong{font-weight:600}
+.dm tr[hidden]{display:none}
+.dm .go{white-space:nowrap}
+
+footer{padding:56px 0 80px}
+footer .wrap{display:flex;justify-content:space-between;gap:32px;flex-wrap:wrap;align-items:flex-start}
+footer p{margin:0;max-width:680px;font:400 12.5px/1.6 var(--mono);color:var(--ink2)}
+
+@media (max-width:980px){
+  :root{--hdr:128px}
+  .hero .wrap{grid-template-columns:1fr;gap:32px}
+  .sec-head{grid-template-columns:1fr;gap:8px}
+  .modes,.inv,.detail{grid-template-columns:1fr}
+  .phone-col{position:static}
+  .detail .dph{border-right:0;border-bottom:1px solid var(--ink)}
+  .cols2,.spec,.calc{grid-template-columns:1fr}
+  .calc>div+div{border-left:0;border-top:1px solid var(--ink)}
+  .spec .wide ul{columns:1}
+  .mode-tabs{grid-template-columns:1fr}.mode-tab{border-right:0;border-bottom:1px solid var(--ink)}
+  .hdr h1{font-size:16px}
+  .mx{grid-template-columns:80px repeat(3,minmax(190px,1fr));overflow-x:auto}
+  .cdetail,.dims{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="wrap">
+    <div class="hdr-top">
+      <h1>Nashik Through Time <span>—</span> Interactive Documentary UX System &amp; Transition Architecture</h1>
+      <a class="back" href="index.html">← Back to Live Interactive Prototype</a>
+    </div>
+    <nav class="nav" aria-label="Sections">
+      <a href="#modes"><b>01</b>3-Speed Attention Model</a>
+      <a href="#states"><b>02</b>5-State Flow</a>
+      <a href="#ia"><b>03</b>Information Architecture</a>
+      <a href="#why"><b>04</b>Why Video+Text Fails</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">UX architecture &amp; state-machine specification · Contest #2800294</div>
+      <h2>The hard part isn’t the screens. It’s the <em>step between them</em>.</h2>
+      <blockquote>“The problem to solve is that how the user transitions between the video and text and other ways of consuming information.”<cite>— contest brief</cite></blockquote>
+    </div>
+    <ol class="laws">
+      <li><div><strong>Every excursion has a return path</strong><span>Reading, mapping or saving never strands the viewer. One tap puts them back in the film.</span></div></li>
+      <li><div><strong>One foreground stream at a time</strong><span>When text takes over, the video docks to 72&nbsp;px and pauses. When the film resumes, the text steps aside.</span></div></li>
+      <li><div><strong>Re-entry restores the thought, not just the timecode</strong><span>Resume rewinds 5&nbsp;s to the start of the narrator’s sentence.</span></div></li>
+    </ol>
+  </div>
+</div>
+
+<!-- ============ 01 ============ -->
+<section class="sec" id="modes">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">§ 01</div>
+      <div>
+        <h2>The 3-Speed Attention Model</h2>
+        <p>One film, three ways to watch it. A viewer shifts between them several times in 15 minutes, so the design offers three transition costs: zero, one tap, and self-paced. Pick a mode to see its wireframe, steps and cost.</p>
+      </div>
+    </div>
+
+    <div class="modes">
+      <div class="phone-col">
+        <div id="modePhone"></div>
+        <div class="cap lbl" id="modePhoneCap"></div>
+      </div>
+      <div>
+        <div class="mode-tabs" role="tablist" aria-label="Viewer mode">
+          <button class="mode-tab" role="tab" id="mt-A" data-m="A" aria-selected="true"><span class="k">Mode A</span><span class="n">Lean-Back Watching</span><span class="f">0 friction</span></button>
+          <button class="mode-tab" role="tab" id="mt-B" data-m="B" aria-selected="false"><span class="k">Mode B</span><span class="n">Micro-Peek · 30 s Glance</span><span class="f">low friction</span></button>
+          <button class="mode-tab" role="tab" id="mt-C" data-m="C" aria-selected="false"><span class="k">Mode C</span><span class="n">Deep Archival Research</span><span class="f">self-paced</span></button>
+        </div>
+        <div class="mode-body" id="modeBody" role="tabpanel"></div>
+      </div>
+    </div>
+
+    <div class="compare">
+      <h3>The three modes, side by side</h3>
+      <p>Same documentary, same content. What differs is how much the film is interrupted and what it costs to come back.</p>
+      <div class="tbl-wrap">
+        <table id="cmpTable">
+          <thead><tr><th></th><th data-m="A">A · Lean-back</th><th data-m="B">B · Micro-peek</th><th data-m="C">C · Deep research</th></tr></thead>
+          <tbody>
+            <tr><th>Trigger</th><td data-m="A">Tap <span class="inl">+ Save</span> on the 8 s Moment Chip</td><td data-m="B">Tap the chip body or pull the sheet up</td><td data-m="C">Expand a drawer, or switch to Map / Stories</td></tr>
+            <tr><th>Film</th><td data-m="A">Keeps playing</td><td data-m="B">Pauses automatically, docks to 72 px</td><td data-m="C">Docked and paused for as long as needed</td></tr>
+            <tr><th>Time away from film</th><td data-m="A">0 s</td><td data-m="B">About 30 s</td><td data-m="C">Open-ended</td></tr>
+            <tr><th>Coming back</th><td data-m="A">Nothing to do</td><td data-m="B">1 tap · <span class="inl">Resume (−5s Replay)</span></td><td data-m="C">1 tap · Resume, or <span class="inl">▶ Jump to Timestamp</span></td></tr>
+            <tr><th>What is kept</th><td data-m="A">Entity + film timestamp in Saved</td><td data-m="B">Pause point + 5 s of context</td><td data-m="C">Reverse link from every entity to the film</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="calc" aria-label="Time cost calculator">
+        <div>
+          <div class="lbl" style="margin-bottom:14px">Try it · what does continuity cost?</div>
+          <label>Micro-peeks in one viewing <output id="oPeeks">3</output><input id="iPeeks" type="range" min="0" max="8" value="3"></label>
+          <label>Average peek length <output id="oLen">30 s</output><input id="iLen" type="range" min="10" max="120" step="5" value="30"></label>
+          <p class="note" style="margin:0">Film length 16:00, as in the reference screen. Each peek adds its length plus a 5 s replay on Resume.</p>
+        </div>
+        <div class="out">
+          <div class="lbl">Total viewing time, Mode B</div>
+          <div class="big" id="cTotal">17:45<small id="cDelta">+1:45</small></div>
+          <p id="cText"></p>
+          <p style="margin-top:14px"><strong>Mode A</strong> adds <span class="mono">0:00</span> however many moments are saved. <strong>Mode C</strong> is self-paced, so no total is shown.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 ============ -->
+<section class="sec" id="states">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">§ 02</div>
+      <div>
+        <h2>Interactive 5-State UX Wireframe Flow</h2>
+        <p>The whole transition system is a small state machine: six screens (State 3 splits into 3A and 3B) and two return loops. Click any state, or step through a path, to see its wireframe, gesture, system response, audio/video behaviour and edge-case rules.</p>
+      </div>
+    </div>
+
+    <div class="sm-tools">
+      <div class="seg" role="group" aria-label="Path">
+        <button data-path="all" aria-pressed="true">Full spec</button>
+        <button data-path="A" aria-pressed="false">Path A · Lean-back</button>
+        <button data-path="B" aria-pressed="false">Path B · Peek &amp; return</button>
+      </div>
+      <div class="stepper"><button id="prevS">← Prev</button><span id="stepInfo">State 1 · step 1 of 6</span><button id="nextS">Next →</button></div>
+    </div>
+
+    <div class="sm-scroll">
+      <div class="sm" id="sm">
+        <svg class="links" id="smLinks" aria-hidden="true"></svg>
+        <div class="sm-grid" id="smGrid"></div>
+      </div>
+    </div>
+    <p class="sm-hint">Arrow keys also move between states. Dashed terracotta lines are the return loops back to State 1.</p>
+
+    <div class="detail" id="detail">
+      <div class="dph"><div id="detPhone"></div><ul class="legend" id="detLegend"></ul></div>
+      <div class="dbody" id="detBody"></div>
+    </div>
+    <p class="note">Timings and thresholds (8 s window, 20 s gap, 64 px commit, 5 s rewind) are proposed starting values, to be tuned in usability testing.</p>
+  </div>
+</section>
+
+<!-- ============ 03 ============ -->
+<section class="sec" id="ia">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">§ 03</div>
+      <div>
+        <h2>Information Architecture: 6 Eras × 4 Tabs × 3 Reading Depths</h2>
+        <p>The reference screen already contains the whole system. This section places every element of it into one structure, so each piece of content has exactly one home and one way back to the film.</p>
+      </div>
+    </div>
+
+    <div class="dims">
+      <div><div class="big">6</div><p><strong>Eras</strong> form the spine. The rail and the film chapters are the same thing.</p></div>
+      <div><div class="big">3</div><p><strong>Evidence types</strong>: Inscriptions, Coins, Cave / architectural remains.</p></div>
+      <div><div class="big">3</div><p><strong>Drawers</strong>: Places, People, Primary sources.</p></div>
+      <div><div class="big">4</div><p><strong>Tabs</strong>: Timeline, Map, Stories, Saved, each with 3 reading depths.</p></div>
+    </div>
+
+    <h3 class="sub-h">3a · The reference screen, element by element</h3>
+    <p class="sub-p">Hover or tap a row to see where it sits on the screen. The last column says which part of the transition system it carries.</p>
+    <div class="inv">
+      <div class="inv-img" id="invImg">
+        <img src="reference_example.png" alt="Reference screen: Nashik Through Time video player, six-era rail, Satavahana sheet with key evidence chips, three drawers and four bottom tabs" width="941" height="1672">
+      </div>
+      <div class="inv-list" id="invList"></div>
+    </div>
+
+    <h3 class="sub-h" style="margin-top:64px">3b · Eras and the evidence each one carries</h3>
+    <p class="sub-p">Choose an era. The sheet, the Key evidence chips and the chapter start time all follow it.</p>
+    <div class="era-scroll"><div class="era-rail" id="eraRail" role="group" aria-label="Era"></div></div>
+    <p class="era-sel-note" id="eraNote"></p>
+    <div class="tbl-wrap">
+      <table class="ev" id="evTable">
+        <thead><tr><th>Era</th><th>Film chapter</th><th>Inscriptions<br><span style="text-transform:none;letter-spacing:0;font-weight:400">written record</span></th><th>Coins<br><span style="text-transform:none;letter-spacing:0;font-weight:400">portable objects</span></th><th>Cave / architectural remains<br><span style="text-transform:none;letter-spacing:0;font-weight:400">built or surviving sites</span></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note">Satavahana is specified in full because it is the selected era in the reference screen. Other rows are candidate evidence for the content team and a historian to confirm. They show that the three chips are slots filled per era, not a fixed list. Chapter times are illustrative, on a 16:00 cut.</p>
+
+    <h3 class="sub-h" style="margin-top:64px">3c · Four tabs × three reading depths</h3>
+    <p class="sub-p">Every tab opens at the same three depths, so the viewer learns one pattern. Pick any cell to see how it is entered, what the film is doing, and how to get back.</p>
+    <div class="mx" id="mx"></div>
+    <div class="cdetail" id="cdetail"></div>
+  </div>
+</section>
+
+<!-- ============ 04 ============ -->
+<section class="sec" id="why" style="border-bottom:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-no">§ 04</div>
+      <div>
+        <h2>Why Standard Video + Text Fails, and What Replaces It</h2>
+        <p>Each row is a concrete failure of the usual “article under a video” pattern, the mechanism that answers it here, and the state where that mechanism lives.</p>
+      </div>
+    </div>
+    <div class="filters" id="filters" role="group" aria-label="Filter by type of problem"></div>
+    <div class="tbl-wrap">
+      <table class="dm" id="dm">
+        <thead><tr><th>Type</th><th>Problem</th><th>Typical video + text page</th><th>This system</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Nashik Through Time · UX architecture companion to the interactive prototype. Example entities and chapter times are illustrative placeholders for a 16:00 film; evidence candidates are for historian review.</p>
+    <a class="back" href="index.html">← Back to Live Interactive Prototype</a>
+  </div>
+</footer>
+
+<script>
+/* =========================================================
+   Wireframe vocabulary — everything is generated so the
+   state diagram, detail panel and mode view share one source
+   ========================================================= */
+const R=(x,y,w,h,r=0,c='')=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" class="${c}"/>`;
+const T=(x,y,t,c='',a='start')=>`<text x="${x}" y="${y}" class="${c}" text-anchor="${a}">${t}</text>`;
+const L=(x1,y1,x2,y2,c='')=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${c}"/>`;
+const C=(cx,cy,r,c='')=>`<circle cx="${cx}" cy="${cy}" r="${r}" class="${c}"/>`;
+const P=(d,c='')=>`<path d="${d}" class="${c}"/>`;
+
+const BOUNDS=[0,.156,.344,.531,.6875,.844,1]; // six era chapters on a 16:00 cut
+
+function fullVideo(){
+  return R(8,8,224,464,22,'vid')
+   +P('M8 300 L52 256 L92 274 L134 238 L176 266 L232 244 L232 450 Q232 472 210 472 L30 472 Q8 472 8 450Z','hill')
+   +P('M8 352 L60 330 L120 346 L180 326 L232 342 L232 450 Q232 472 210 472 L30 472 Q8 472 8 450Z','hill2')
+   +P('M176 262 L184 214 L192 262Z','hill2')+R(170,262,28,24,0,'hill2')+R(150,274,16,12,0,'hill2')
+   +T(22,34,'Nashik Through Time','tx-w')
+   +R(168,22,24,13,3,'wl')+T(180,31.5,'CC','tx-m','middle');
+}
+function scrub(prog=.2625,{bracket=false}={}){
+  const x0=24,x1=216,y=444,w=x1-x0;
+  let s=L(x0,y,x1,y,'ln-w')+L(x0,y,x0+w*prog,y,'ln-t');
+  BOUNDS.forEach(b=>{s+=L(x0+w*b,y-4,x0+w*b,y+4,'ln-wh')});
+  s+=C(x0+w*prog,y,4.5,'');
+  s=s.replace(/<circle([^>]*)class=""/,'<circle$1fill="#fff"');
+  if(bracket){const a=x0+w*prog-8,b=x0+w*prog+3;s+=P(`M${a} ${y-9} V${y-13} H${b} V${y-9}`,'wl" style="stroke:#F2B77A;stroke-width:1.4')+T((a+b)/2,y-17,'04:07 → 04:12','tx-m" style="fill:#F2B77A','middle');}
+  return s;
+}
+function captions(hi=false){
+  const f='fill="rgba(255,255,255,.88)"';
+  return `<rect x="52" y="388" width="136" height="5" rx="2.5" ${f}/><rect x="70" y="398" width="100" height="5" rx="2.5" ${f}/>`
+   +(hi?R(52,388,58,5,2.5,'tc')+R(70,398,40,5,2.5,'tc'):'');
+}
+function handle(){return R(106,456,28,3.5,2,'').replace('class=""','fill="#fff"')}
+function bookmark(x,y,badge){
+  return P(`M${x} ${y} h10 v14 l-5 -4 l-5 4Z`,'').replace('class=""','fill="none" stroke="#fff" stroke-width="1.3"')
+   +(badge?C(x+11,y+1,5.5,'tc')+T(x+11,y+3.4,badge,'tx-m','middle'):'');
+}
+function miniPlayer(label='Satavahana · 04:12',sub='Paused · tap to expand',prog=.2625,y=12){
+  return R(12,y,216,44,10,'vid2')+P(`M12 ${y+34} L28 ${y+20} L42 ${y+27} L56 ${y+16} L72 ${y+30} V${y+44} H22 Q12 ${y+44} 12 ${y+34}Z`,'hill')
+   +R(34,y+14,4,14,1,'').replace('class=""','fill="#fff"')+R(41,y+14,4,14,1,'').replace('class=""','fill="#fff"')
+   +T(82,y+17,label,'tx-w')+T(82,y+28,sub,'tx-ws')
+   +L(82,y+38,216,y+38,'ln-w')+L(82,y+38,82+134*prog,y+38,'ln-t');
+}
+function chips(y,list){let x=16,s='';list.forEach(t=>{const w=t.length*3.9+12;s+=R(x,y,w,15,7.5,'wf')+T(x+w/2,y+10,t,'tx-s','middle');x+=w+4});return s}
+function drawerRow(y,label,open=false,items=''){
+  return R(12,y,216,26,8,'fcard')+C(26,y+13,5,'wfd')+T(38,y+16.2,label,'tx')
+   +P(open?`M208 ${y+15} l5 -5 l5 5`:`M208 ${y+11} l5 5 l5 -5`,'wl');
+}
+function resumeBar(txt){return R(12,424,216,38,19,'tc')+T(120,446,txt,'tx-w" style="font-size:9.5px','middle')}
+function tabBar(sel){
+  const names=['Timeline','Map','Stories','Saved'];let s=R(12,424,216,40,16,'fcard');
+  names.forEach((n,i)=>{const cx=12+27+i*54;if(i===sel)s+=R(cx-24,428,48,32,12,'tcs');s+=C(cx,439,4,'wfd')+T(cx,455,n,'tx-s','middle')});return s;
+}
+function sheetBase(){return R(4,4,232,472,26,'fr')}
+function markLayer(marks){
+  return marks.map(([n,y,side,tx])=>{
+    const mx=side==='L'?-4:244, lx=side==='L'?3:237;
+    return `<path d="M${lx} ${y} L${tx} ${y}" class="leader"/><circle cx="${mx}" cy="${y}" r="7.5" class="mk-c"/><text x="${mx}" y="${y+3}" class="mk-t">${n}</text>`;
+  }).join('');
+}
+
+const SCENES={
+ s1:()=>fullVideo()+captions()+scrub()+handle(),
+ s2:()=>fullVideo()+captions()+scrub()+handle()
+  +R(14,336,212,46,23,'pill')+C(37,359,11,'').replace('class=""','fill="none" stroke="#E3DCCB" stroke-width="2.2"')
+  +`<circle cx="37" cy="359" r="11" class="ringarc"/>`+T(37,361.5,'8s','tx-s','middle')
+  +T(54,355,'Cave 3 inscription','tx" style="font-size:8px')+T(54,366,'Satavahana · 04:12','tx-s')
+  +R(138,348,42,22,11,'tc')+T(159,362,'+ Save','tx-w','middle')
+  +R(184,348,36,22,11,'wf')+T(202,362,'Peek ↑','tx" style="font-size:7.5px','middle'),
+ s3a:()=>fullVideo()+captions()+scrub(.265)+handle()
+  +R(56,342,128,30,15,'pillok')+T(120,361,'✓ Saved · 04:12','tx" style="fill:#7C3A06','middle')
+  +bookmark(212,22,'+1')
+  +T(24,430,'▶ still playing','tx-m'),
+ s3b:()=>sheetBase()+miniPlayer()
+  +R(108,64,24,3,2,'wfd')
+  +T(16,88,'Cave 3 inscription','tx-serif')+T(16,99,'Satavahana · c. 2nd c. BCE – 3rd c. CE','tx-s')
+  +[0,1,2].map(i=>C(20,114+i*13,2,'tc')+R(28,111+i*13,[150,128,108][i],5,2.5,'wf')).join('')
+  +T(16,160,'Key evidence','tx')+chips(166,['Inscriptions','Coins','Cave remains'])
+  +drawerRow(192,'Places')+drawerRow(222,'People')+drawerRow(252,'Primary sources')
+  +R(12,288,216,100,8,'').replace('class=""','fill="none" stroke="#B45309" stroke-width="1" stroke-dasharray="3 3"')
+  +T(120,330,'Layer 3 · entity detail','tx-s" style="fill:#B45309','middle')+T(120,341,'opens when a drawer row is tapped','tx-s" style="fill:#B45309','middle')
+  +resumeBar('▶ Resume (−5s Replay)'),
+ s4:()=>sheetBase()+miniPlayer('Satavahana → Jogalthembi','Scrubbing… release to preview',.2625)
+  +L(24,70,216,70,'').replace('class=""','stroke="#CFC7B6" stroke-width="2" stroke-linecap="round"')
+  +BOUNDS.map(b=>L(24+192*b,66,24+192*b,74,'').replace('class=""','stroke="#8A837B" stroke-width="1"')).join('')
+  +L(24,70,24+192*.2083,70,'ln-t')
+  +C(24+192*.2625,70,4,'').replace('class=""','fill="#FFFDF8" stroke="#B45309" stroke-width="1.5"')
+  +C(24+192*.2083,70,5,'tc')
+  +P(`M${24+192*.2625-5} 62 Q${24+192*.235} 56 ${24+192*.2083+3} 62`,'').replace('class=""','fill="none" stroke="#B45309" stroke-width="1" marker-end="url(#ah)"')
+  +R(20,78,60,32,6,'bub')+R(24,82,52,18,3,'vid')+P('M24 96 L36 88 L46 92 L58 85 L76 94 V100 H24Z','hill')+T(50,107,'03:20','tx-s" style="font-family:var(--mono);fill:#7C3A06','middle')
+  +drawerRow(118,'Places',true)
+  +R(12,148,216,30,6,'fcard')+T(22,160,'Pandav Leni caves','tx')+T(22,171,'rock-cut monasteries','tx-s')+R(170,154,50,18,9,'wf')+T(195,166,'▶ 04:12','tx-s" style="font-family:var(--mono)','middle')
+  +R(12,182,216,30,6,'').replace('class=""','fill="#F4E2CB" stroke="#B45309" stroke-width="1.6"')+T(22,194,'Jogalthembi','tx')+T(22,205,'coin hoard site','tx-s')+R(170,188,50,18,9,'tc')+T(195,200,'▶ 03:20','tx-w" style="font-family:var(--mono)','middle')
+  +drawerRow(222,'People')+drawerRow(252,'Primary sources')
+  +resumeBar('▶ Play from 03:20'),
+ s5:()=>fullVideo()+captions(true)+scrub(.2625,{bracket:true})+handle()
+  +R(84,136,72,26,13,'tc')+T(120,153,'↺ −5 s','tx-w" style="font-size:10px','middle')
+  +R(14,330,212,142,26,'').replace('class=""','fill="rgba(255,253,248,.12)" stroke="#fff" stroke-width="1" stroke-dasharray="3 3"')
+  +P('M120 346 v16 m-6 -6 l6 6 l6 -6','').replace('class=""','fill="none" stroke="#fff" stroke-width="1.4"')
+  +[3,6,9,13,17,22,26].map((h,i)=>R(156+i*5,414-h/2,3,h,1.5,'').replace('class=""','fill="#F2B77A"')).join('')
+};
+const MARKS={
+ s1:[[1,396,'L',50],[2,444,'R',200],[3,457,'L',104]],
+ s2:[[1,359,'L',28],[2,343,'R',162],[3,359,'R',222]],
+ s3a:[[1,357,'L',58],[2,32,'R',214],[3,430,'L',24]],
+ s3b:[[1,34,'L',14],[2,126,'L',16],[3,205,'L',14],[4,338,'L',14],[5,443,'R',226]],
+ s4:[[1,34,'L',14],[2,70,'R',218],[3,197,'R',224],[4,443,'R',226]],
+ s5:[[1,149,'L',86],[2,393,'R',186],[3,414,'R',188],[4,346,'L',16]]
+};
+function phone(id,{marks=false,label=''}={}){
+  const vb=marks?'-14 0 268 480':'0 0 240 480';
+  return `<svg class="ph" viewBox="${vb}" role="img" aria-label="${label}">
+   <defs><marker id="ah-${id}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#B45309"/></marker></defs>
+   ${SCENES[id]().replace(/url\(#ah\)/g,`url(#ah-${id})`)}${marks?markLayer(MARKS[id]):''}</svg>`;
+}
+const MODEC=()=>sheetBase()+miniPlayer('Satavahana · 04:12','Docked · paused while you research')
+  +R(108,64,24,3,2,'wfd')+T(16,86,'Satavahana','tx-serif')
+  +drawerRow(96,'Places',true)
+  +[['Pandav Leni caves','04:12'],['Jogalthembi','03:20'],['Nashik (Govardhan)','02:58']].map((r,i)=>R(12,126+i*32,216,28,6,'fcard')+T(22,138+i*32,r[0],'tx')+T(22,148+i*32,'tap row for detail','tx-s')+R(172,132+i*32,48,16,8,'tc')+T(196,143+i*32,'▶ '+r[1],'tx-w" style="font-family:var(--mono);font-size:7px','middle')).join('')
+  +drawerRow(228,'People')+drawerRow(258,'Primary sources')
+  +R(12,292,216,96,8,'').replace('class=""','fill="none" stroke="#B45309" stroke-width="1" stroke-dasharray="3 3"')
+  +T(120,336,'Map pins · Story cards','tx-s" style="fill:#B45309','middle')+T(120,347,'switch tab without losing the film','tx-s" style="fill:#B45309','middle')
+  +tabBar(1);
+const MODEMARKS=[[1,34,'L',14],[2,142,'R',222],[3,244,'L',14],[4,444,'R',226]];
+function phoneC(){
+  return `<svg class="ph" viewBox="-14 0 268 480" role="img" aria-label="Mode C wireframe: docked mini-player, Places drawer open with jump links, bottom tabs">${MODEC()}${markLayer(MODEMARKS)}</svg>`;
+}
+
+/* =========================================================
+   Section 1 — modes
+   ========================================================= */
+const MODES={
+ A:{k:'Mode A',name:'Lean-Back Watching',tag:'0 Friction',
+   intent:'The viewer is absorbed and curious about something, but not curious enough to stop the film.',
+   steps:['An 8 s <code>Moment Chip</code> floats above the captions when a cue point is reached.','Tap <code>[+ Save]</code>. One tap, thumb-reachable.','The chip collapses to “✓ Saved” and a bookmark badge ticks up.','The film <strong>never pauses</strong>. Narration and picture carry on.','After the film, the <code>Saved</code> tab holds every item with its film timestamp, ready to explore.'],
+   metrics:[['Gestures to enter','1',1,3],['Film paused','No',0,3],['Time away','0 s',0,3],['Cost to return','None, you never left',0,3],['Kept for later','Entity, era and film timestamp in Saved',null]],
+   cap:'State 3A · One-tap queue',states:['s2','s3a'],scene:()=>phone('s3a',{marks:true,label:'Mode A wireframe: Saved confirmation chip, bookmark badge, film still playing'}),
+   legend:null},
+ B:{k:'Mode B',name:'Micro-Peek / 30 s Glance',tag:'Low Friction',
+   intent:'The viewer wants one fact (who, when, what is that?) and then wants the film back.',
+   steps:['Pull the sheet up, or tap the chip body.','The film <strong>pauses automatically</strong> and docks into a 72 px <code>Sticky Mini-Player</code>.','The sheet shows a 3-bullet summary and key evidence pills: <code>Inscriptions</code>, <code>Coins</code>, <code>Cave remains</code>.','Tap <code>Resume (−5s Replay)</code>. The narrator’s last 5 seconds play again.','The viewer re-enters mid-thought, not mid-sentence.'],
+   metrics:[['Gestures to enter','1 + 1 to resume',1,3],['Film paused','Yes, automatic',2,3],['Time away','About 30 s',1,3],['Cost to return','1 tap',1,3],['Kept for later','Pause point plus 5 s of context']],
+   cap:'State 3B · Docked mini-player',states:['s3b','s5'],scene:()=>phone('s3b',{marks:true,label:'Mode B wireframe: 72 pixel mini-player, 3-bullet summary, evidence pills, drawers and Resume bar'})},
+ C:{k:'Mode C',name:'Deep Archival Research',tag:'Self-Paced',
+   intent:'The viewer is here to study. The film is a map into the material, not the whole experience.',
+   steps:['Expand <code>Places</code>, <code>People</code> or <code>Primary Sources</code>, or switch to the <code>Map</code> / <code>Stories</code> tabs.','The film stays docked and paused. Nothing is lost by lingering.','Every historical entity carries <code>[▶ Jump to Timestamp]</code>, a reverse link into the documentary timeline.','Jumping scrubs the mini-player to the exact sentence. A “Back to 04:12” chip holds the old position for 10 s.','Leave via Resume, or keep researching from the new position.'],
+   metrics:[['Gestures to enter','2 or more',2,3],['Film paused','Yes, for as long as needed',2,3],['Time away','Open-ended',3,3],['Cost to return','1 tap, Resume or Jump',1,3],['Kept for later','Reverse link from every entity to the film']],
+   cap:'Mode C · Drawer open, tabs available',states:['s3b','s4'],scene:phoneC}
+};
+function pips(on,tot){return `<span class="pips" aria-hidden="true">${Array.from({length:tot},(_,i)=>`<i class="${i<on?'on':''}"></i>`).join('')}</span>`}
+function showMode(m){
+  const d=MODES[m];
+  document.querySelectorAll('.mode-tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.m===m));
+  document.querySelectorAll('#cmpTable [data-m]').forEach(el=>el.classList.toggle('hl-col',el.dataset.m===m));
+  document.getElementById('modePhone').innerHTML=d.scene();
+  document.getElementById('modePhoneCap').textContent=d.cap;
+  const mk=d.metrics.map(([l,v,on,tot])=>`<div class="metric"><span class="lbl">${l}</span><span class="v">${on!=null?pips(on,tot):''}${v}</span></div>`).join('');
+  document.getElementById('modeBody').innerHTML=`
+   <h3>${d.name} <span class="mono" style="font-size:13px;color:var(--terra);font-weight:500;vertical-align:middle">· ${d.tag}</span></h3>
+   <p class="intent">${d.intent}</p>
+   <div class="cols2"><div><div class="lbl" style="margin-bottom:8px">What happens</div><ol class="steps">${d.steps.map(s=>`<li><span>${s}</span></li>`).join('')}</ol></div>
+   <div><div class="lbl" style="margin-bottom:8px">What it costs</div><div class="metrics">${mk}</div></div></div>
+   <div class="mode-links"><button class="btn-link" data-goto="${d.states[0]}">See ${d.states.map(s=>SD[s].k).join(' → ')} in the state machine ↓</button></div>`;
+  document.querySelector('#modeBody [data-goto]').addEventListener('click',e=>{gotoState(e.currentTarget.dataset.goto,true)});
+}
+document.querySelectorAll('.mode-tab').forEach(b=>{
+  b.addEventListener('click',()=>showMode(b.dataset.m));
+  b.addEventListener('keydown',e=>{const o=['A','B','C'],i=o.indexOf(b.dataset.m);if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const n=o[(i+(e.key==='ArrowRight'?1:2))%3];showMode(n);document.getElementById('mt-'+n).focus()}});
+});
+const mmss=s=>`${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}`;
+function calc(){
+  const n=+document.getElementById('iPeeks').value,len=+document.getElementById('iLen').value,film=960;
+  const add=n*(len+5);
+  document.getElementById('oPeeks').textContent=n;document.getElementById('oLen').textContent=len+' s';
+  document.getElementById('cTotal').innerHTML=`${mmss(film+add)}<small>+${mmss(add)}</small>`;
+  document.getElementById('cText').textContent=n===0?'No peeks, so the film plays straight through in 16:00.':`${n} ${n===1?'peek':'peeks'} × ${len} s reading, plus ${n*5} s of replayed narration. The replay is the price of not losing the thread.`;
+}
+['iPeeks','iLen'].forEach(i=>document.getElementById(i).addEventListener('input',calc));
+
+/* =========================================================
+   Section 2 — state machine
+   ========================================================= */
+const SD={
+ s1:{k:'State 1',title:'Full-Bleed Playback',short:'The default. Nothing else on screen.',timing:'t = film time',
+  gesture:'None needed. Optionally tap to reveal controls. Swipe up from the bottom handle to peek; the pull commits after 64 px of travel or a quick flick.',
+  system:'The video fills the screen. Search, place selector and tabs are hidden. Two things remain: a thin progress line with six era ticks, and the pull-up handle.',
+  av:'Plays continuously. Narration and captions follow the viewer’s caption setting.',
+  edge:['Pull released before 64 px snaps back and <strong>never</strong> pauses the film.','Rotating the phone keeps playback and state.','A phone call or unplugged headphones pause the film. Resume applies the same −5 s rule.','Returning here from State 3A or 5 does not re-show controls.'],
+  marks:['Pull-up handle','Progress line with era ticks','Captions, always on a clear lower third']},
+ s2:{k:'State 2',title:'Timed Cue Pill (8 s Window)',short:'A moment worth a look appears.',timing:'8 s window',
+  gesture:'Ignore it, tap + Save, or tap Peek ↑ (or the pill body).',
+  system:'The film reaches an authored cue point on a sentence boundary. A pill rises above the captions with the entity name, its era and timestamp, a countdown ring, and two actions: + Save and Peek ↑.',
+  av:'Playback is untouched. No sound effect; the narrator is the only audio.',
+  edge:['One pill at a time, with at least 20 s between cues.','The pill never covers captions.','If ignored, it leaves a small tick on the progress line, and the entity stays reachable from the drawers.','With a screen reader or switch control active, the window extends to 15 s and the pill is announced politely.','Reduced motion: no slide-in; the ring becomes a plain “8 s” label.','No pill appears while the viewer is peeking.'],
+  marks:['8 s countdown ring','+ Save (Mode A)','Peek ↑ (Mode B)']},
+ s3a:{k:'State 3A',title:'One-Tap Queue (No Pause)',short:'Save it and keep watching.',timing:'+0 s film delay',
+  gesture:'One tap on + Save.',
+  system:'The pill shrinks to “✓ Saved · 04:12” for 1.2 s, then becomes a bookmark badge that counts up. The item is stored with entity, era and the sentence-start timestamp. A light haptic tick confirms it.',
+  av:'The film does not pause. Audio and picture are unchanged.',
+  edge:['A second tap on the same item within 3 s undoes the save.','No duplicates if the same entity is saved twice.','Works offline; saves sync later.','At the end card: “You saved 6 moments. Explore them.” opens the Saved tab.','Saved items later feed State 4 (Jump) from the Saved tab.'],
+  marks:['Saved confirmation','Bookmark badge','Film still playing']},
+ s3b:{k:'State 3B',title:'Docked Mini-Player + 3-Layer Drawer',short:'Stop for a moment and read.',timing:'72 px dock · pause at commit',
+  gesture:'Tap Peek ↑ or the pill body, or pull the handle past the commit threshold.',
+  system:'The sheet rises to about 70% height. The video docks into a 72 px sticky mini-player. The sheet has three layers: <strong>L1 Glance</strong> (3 bullets and evidence pills), <strong>L2 Drawers</strong> (Places, People, Primary sources), <strong>L3 Entity detail</strong> (opens on tapping a drawer row). A Resume bar replaces the tab bar, so the return action owns the thumb zone.',
+  av:'The film pauses at the commit point, not on first touch. Audio fades out in 150 ms. The pause time is stored once as <span class="mono">t_pause</span>.',
+  edge:['Dragging the sheet down is the same as Resume.','Backgrounding the app keeps <span class="mono">t_pause</span> for 24 h, and reopening offers Resume.','In landscape the drawer becomes a right-hand panel and the video keeps its shape.','Cue pills are suppressed while docked.','The mini-player scrub bar ignores accidental touches unless dragged.'],
+  marks:['72 px Sticky Mini-Player','L1: 3 bullets + evidence pills','L2: Places · People · Primary sources','L3: entity detail','Resume (−5s Replay) bar']},
+ s4:{k:'State 4',title:'Reverse Timestamp Scrubbing',short:'From a fact back to its moment in the film.',timing:'400 ms seek',
+  gesture:'Tap ▶ Jump to Timestamp on any entity row, map pin card, story paragraph or Saved item. Or drag the mini-player scrub bar.',
+  system:'The mini-player scrubs to the entity’s timestamp. A thumbnail bubble previews the frame. The era in the sheet follows the film, and open drawers stay open. The Resume bar relabels itself “Play from 03:20”.',
+  av:'The film stays paused on the target frame. No audio while scrubbing; the picture is the preview.',
+  edge:['Jump targets are stored as sentence starts, so no −5 s lead-in is added.','A “Back to 04:12” chip holds the old position for 10 s after any jump.','If an entity appears several times, its row shows every timestamp (04:12 · 09:40).','Jumping into another era swaps the sheet header and Key evidence to that era.','After the film has ended, Jump opens the mini-player at that point and plays on Resume.'],
+  marks:['Mini-player with scrub bar','Old position ○ → new position ●','Entity row with ▶ Jump','Resume relabelled']},
+ s5:{k:'State 5',title:'−5 s Context Replay Resume',short:'Back in the film, mid-thought.',timing:'−5 s · 240 ms collapse',
+  gesture:'Tap Resume, drag the sheet down, or swipe back.',
+  system:'The sheet collapses in 240 ms and the video re-expands to full-bleed. A “↺ −5 s” badge shows for 1.5 s. Captions highlight the replayed words, and a small bracket on the progress line marks the 5 s segment.',
+  av:'Playback restarts at <span class="mono">t_pause − 5 s</span>, nudged back to the nearest sentence start (never more than 8 s). Audio fades in over 300 ms.',
+  edge:['Away for less than 3 s: no rewind.','The rewind never crosses the start of the current chapter.','Pressing Resume twice does not rewind twice. <span class="mono">t_pause</span> is stored once.','After a Jump, playback starts exactly at the stored sentence start.','Cue pills are held back for 3 s so they do not stack on the replay.'],
+  marks:['−5 s badge','Replayed words highlighted','Audio fade-in','Sheet collapses']}
+};
+const ORDER=['s1','s2','s3a','s3b','s4','s5'];
+const PATHS={all:ORDER,A:['s1','s2','s3a','s1'],B:['s1','s2','s3b','s4','s5','s1']};
+let curPath='all',curIdx=0,curState='s1';
+
+function buildNodes(){
+  document.getElementById('smGrid').innerHTML=ORDER.map(id=>{const d=SD[id];
+   return `<button class="node n-${id}" id="node-${id}" data-s="${id}" aria-pressed="false"><span class="th">${phone(id,{label:d.title+' thumbnail'}).replace('class="ph"','')}</span><span class="tx2"><span class="k">${d.k.toUpperCase()}</span><span class="t">${d.title.replace(/ \(.*\)/,'')}</span><span class="d">${d.timing}</span></span></button>`}).join('');
+  document.querySelectorAll('.node').forEach(n=>{
+    n.addEventListener('click',()=>gotoState(n.dataset.s,false));
+    n.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();step(e.key==='ArrowRight'?1:-1);document.getElementById('node-'+curState).focus()}});
+  });
+}
+function drawLinks(){
+  const wrap=document.getElementById('sm'),svg=document.getElementById('smLinks');
+  const wr=wrap.getBoundingClientRect();
+  svg.setAttribute('viewBox',`0 0 ${wr.width} ${wr.height}`);
+  const g=id=>{const r=document.getElementById('node-'+id).getBoundingClientRect();return{l:r.left-wr.left,r:r.right-wr.left,t:r.top-wr.top,b:r.bottom-wr.top,cx:(r.left+r.right)/2-wr.left,cy:(r.top+r.bottom)/2-wr.top}};
+  const s1=g('s1'),s2=g('s2'),a=g('s3a'),b=g('s3b'),s4=g('s4'),s5=g('s5');
+  const mid=(x1,x2)=>(x1+x2)/2;
+  const main=(d)=>`<path d="${d}" fill="none" stroke="#1C1917" stroke-width="1.6" marker-end="url(#arr)"/>`;
+  const loop=(d)=>`<path d="${d}" fill="none" stroke="#B45309" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrt)"/>`;
+  const xm23=mid(s2.r,a.l),xm34=mid(b.r,s4.l);
+  const yTop=18,yBot=wr.height-18;
+  let h=`<defs><marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#1C1917"/></marker><marker id="arrt" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#B45309"/></marker></defs>`;
+  h+=main(`M${s1.r} ${s1.cy} H${s2.l}`);
+  h+=main(`M${s2.r} ${s2.cy} H${xm23} V${a.cy} H${a.l}`);
+  h+=main(`M${s2.r} ${s2.cy} H${xm23} V${b.cy} H${b.l}`);
+  h+=main(`M${b.r} ${b.cy} H${xm34} V${s4.cy} H${s4.l}`);
+  h+=main(`M${s4.r} ${s4.cy} H${s5.l}`);
+  h+=loop(`M${a.cx} ${a.t} V${yTop} H${s1.cx} V${s1.t}`);
+  h+=loop(`M${s5.cx} ${s5.b} V${yBot} H${s1.cx} V${s1.b}`);
+  const tx=(x,y,t,anc='middle')=>`<text x="${x}" y="${y}" text-anchor="${anc}" style="font:500 10.5px 'JetBrains Mono',monospace;fill:#B45309">${t}</text>`;
+  const bg=(x,y,w)=>`<rect x="${x-w/2}" y="${y-8}" width="${w}" height="14" fill="#FFFDF8"/>`;
+  h+=bg(mid(a.cx,s1.cx),yTop,300)+tx(mid(a.cx,s1.cx),yTop+3,'A · film never paused, straight back to State 1');
+  h+=bg(mid(s5.cx,s1.cx),yBot,320)+tx(mid(s5.cx,s1.cx),yBot+3,'B · film continues from −5 s, back to State 1');
+  const lb=(x,y,t)=>tx(x,y,t);
+  h+=`<text x="${xm23}" y="${a.cy-8}" text-anchor="middle" style="font:500 10px 'JetBrains Mono',monospace;fill:#57534E">Save</text>`;
+  h+=`<text x="${xm23}" y="${b.cy+16}" text-anchor="middle" style="font:500 10px 'JetBrains Mono',monospace;fill:#57534E">Peek</text>`;
+  svg.innerHTML=h;
+}
+function renderDetail(id){
+  const d=SD[id];
+  document.getElementById('detPhone').innerHTML=phone(id,{marks:true,label:d.title+' wireframe'});
+  document.getElementById('detLegend').innerHTML=d.marks.map((m,i)=>`<li><b>${i+1}</b><span>${m}</span></li>`).join('');
+  document.getElementById('detBody').innerHTML=`
+   <div class="eyebrow">${d.k}</div>
+   <h3>${d.title}</h3>
+   <p style="margin:0;color:var(--ink2);font-size:16.5px">${d.short}</p>
+   <div class="chips"><span class="chip t">${d.timing}</span>${(id==='s3a'||id==='s3b')?'<span class="chip">branch from State 2</span>':''}${id==='s3a'?'<span class="chip">exit → State 1</span>':id==='s5'?'<span class="chip">exit → State 1</span>':''}</div>
+   <div class="spec">
+    <section><h4>User gesture</h4><p>${d.gesture}</p></section>
+    <section><h4>System response</h4><p>${d.system}</p></section>
+    <section class="wide"><h4>Audio / video behaviour</h4><p>${d.av}</p></section>
+    <section class="wide"><h4>Edge-case rules</h4><ul>${d.edge.map(e=>`<li>${e}</li>`).join('')}</ul></section>
+   </div>`;
+}
+function setActive(id){
+  curState=id;
+  document.querySelectorAll('.node').forEach(n=>{n.classList.toggle('active',n.dataset.s===id);n.setAttribute('aria-pressed',n.dataset.s===id);n.classList.toggle('onp',curPath!=='all'&&PATHS[curPath].includes(n.dataset.s)&&n.dataset.s!==id)});
+  const p=PATHS[curPath];
+  document.getElementById('stepInfo').textContent=`${SD[id].k} · step ${curIdx+1} of ${p.length}`;
+  document.getElementById('prevS').disabled=curIdx===0;
+  document.getElementById('nextS').disabled=curIdx===p.length-1;
+  renderDetail(id);
+}
+function gotoState(id,scroll){
+  const p=PATHS[curPath];
+  if(!p.includes(id)){curPath='all';syncPathBtns()}
+  curIdx=PATHS[curPath].indexOf(id);
+  setActive(id);
+  if(scroll)document.getElementById('states').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});
+}
+function step(dir){const p=PATHS[curPath];const i=Math.min(Math.max(curIdx+dir,0),p.length-1);curIdx=i;setActive(p[i])}
+function syncPathBtns(){document.querySelectorAll('[data-path]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.path===curPath))}
+document.querySelectorAll('[data-path]').forEach(b=>b.addEventListener('click',()=>{curPath=b.dataset.path;syncPathBtns();curIdx=0;setActive(PATHS[curPath][0])}));
+document.getElementById('prevS').addEventListener('click',()=>step(-1));
+document.getElementById('nextS').addEventListener('click',()=>step(1));
+
+/* =========================================================
+   Section 3 — IA
+   ========================================================= */
+const ELEMS=[
+ {n:1,a:'Nashik ▾ place selector',b:'Sets the subject of the whole app, so the same shell can host other cities.',m:'Context · visible in browse layouts, hidden in State 1',h:[5,2.2,27,4.5]},
+ {n:2,a:'Search',b:'Finds entities (places, people, sources), not video. Every result carries a ▶ timestamp.',m:'Entry to State 4 from outside the film',h:[35.8,2.2,59.4,4.5]},
+ {n:3,a:'Video player: ▶, 0:00 / 16:00, CC, fullscreen',b:'Grows to full-bleed in State 1 and shrinks to the 72 px mini-player in State 3B.',m:'States 1, 3B, 4, 5',h:[3.2,8.1,93.6,24.8]},
+ {n:4,a:'Six-era rail',b:'The shared spine. Tapping an era seeks the film to its chapter start; film progress moves the highlight.',m:'Era sync · 6 eras',h:[5.3,34.4,89.8,5.8]},
+ {n:5,a:'“Swipe to explore eras”',b:'Swiping the sheet sideways changes era and moves the film with it.',m:'Era sync · gesture',h:[31.3,41.3,37.7,2.2]},
+ {n:6,a:'Sheet handle',b:'The pull-up that starts Mode B. Commits after 64 px, so brushing it never pauses the film.',m:'State 1 → 3B',h:[44.6,45.6,10.6,1.8]},
+ {n:7,a:'Era title, dates, “Selected era”',b:'Orients the viewer. In State 4 it follows the film into a new era.',m:'Depth 1 · Glance',h:[5.8,47.8,89.2,6]},
+ {n:8,a:'Summary lines',b:'Become the 3-bullet summary read during a micro-peek.',m:'Depth 1 · Glance',h:[5.3,55.7,52,6.3]},
+ {n:9,a:'Map thumbnail',b:'A preview of the Map tab with the era’s pins. Tapping it opens the Map.',m:'Map tab · Depth 1',h:[62.8,54.9,32.3,11.2]},
+ {n:10,a:'Key evidence chips',b:'Three evidence slots: Inscriptions, Coins, Cave remains. Each filters the drawers below and holds its own ▶ timestamps.',m:'Depth 1 · 3 evidence types',h:[5.3,65.2,62.3,6.9]},
+ {n:11,a:'Places · People · Primary sources',b:'The three drawers. A row opens entity detail; each entity has ▶ Jump to Timestamp.',m:'Depth 2 → 3 · 3 drawers',h:[4.8,74.3,90.8,15.6]},
+ {n:12,a:'Bottom tabs: Timeline · Map · Stories · Saved',b:'Four ways to consume the same material. Replaced by the Resume bar while peeking.',m:'4 tabs',h:[1.6,91.8,96.7,7.5]}
+];
+function buildInv(){
+  const img=document.getElementById('invImg');
+  ELEMS.forEach(e=>{const d=document.createElement('div');d.className='hot';d.id='hot'+e.n;d.style.cssText=`left:${e.h[0]}%;top:${e.h[1]}%;width:${e.h[2]}%;height:${e.h[3]}%`;img.appendChild(d)});
+  const list=document.getElementById('invList');
+  list.innerHTML=ELEMS.map(e=>`<button class="inv-row" data-n="${e.n}"><span class="n">${String(e.n).padStart(2,'0')}</span><span class="a">${e.a}</span><span class="b">${e.b}<em>${e.m}</em></span></button>`).join('');
+  const on=n=>{document.querySelectorAll('.hot').forEach(h=>h.classList.toggle('on',h.id==='hot'+n));document.querySelectorAll('.inv-row').forEach(r=>r.classList.toggle('on',+r.dataset.n===n))};
+  list.querySelectorAll('.inv-row').forEach(r=>{['mouseenter','focus','click'].forEach(ev=>r.addEventListener(ev,()=>on(+r.dataset.n)))});
+  list.addEventListener('mouseleave',()=>on(0));
+  on(0);
+}
+
+const ERAS=[
+ {id:'ancient',name:'Ancient',dates:'c. 1500 BCE – 200 BCE',ch:'00:00 – 02:30',ev:[['Epic and Puranic references (texts)'],['Pottery and stone tools from excavations'],['Riverside sacred sites on the Godavari']]},
+ {id:'sat',name:'Satavahana',dates:'c. 2nd century BCE – 3rd century CE',ch:'02:30 – 05:30',ex:true,ev:[['Inscriptions','Cave 3 donative inscription'],['Coins','Jogalthembi coin hoard'],['Cave remains','Pandav Leni cave group']]},
+ {id:'med',name:'Medieval',dates:'c. 4th – 17th century',ch:'05:30 – 08:30',ev:[['Temple and copper-plate inscriptions'],['Regional coinage'],['Temples and later rock-cut work']]},
+ {id:'mar',name:'Maratha',dates:'1670 – 1818 CE',ch:'08:30 – 11:00',ev:[['Peshwa-era letters and records'],['Coins and seals'],['Temples and wadas']]},
+ {id:'bri',name:'British',dates:'1818 – 1947 CE',ch:'11:00 – 13:30',ev:[['Gazetteers and collectors’ reports'],['Photographs and maps'],['Railway, courts and civic buildings']]},
+ {id:'tod',name:'Today',dates:'1947 – Present',ch:'13:30 – 16:00',ev:[['Oral histories and newspapers'],['Festival objects and everyday artefacts'],['Living ghats and festival grounds']]}
+];
+let eraIdx=1;
+function buildEras(){
+  const rail=document.getElementById('eraRail');
+  rail.innerHTML=ERAS.map((e,i)=>`<button class="era-btn" data-i="${i}" aria-pressed="${i===eraIdx}"><i></i><b>${e.name}</b><span>${e.dates}</span></button>`).join('');
+  rail.querySelectorAll('.era-btn').forEach(b=>b.addEventListener('click',()=>{eraIdx=+b.dataset.i;renderEra()}));
+  document.querySelector('#evTable tbody').innerHTML=ERAS.map((e,i)=>`<tr data-i="${i}">
+    <th>${e.name}<br><span class="mono" style="font-weight:400;font-size:11px;color:var(--ink3)">${e.dates}</span></th>
+    <td class="mono" style="font-size:12.5px">${e.ch}</td>
+    ${e.ev.map(x=>`<td>${e.ex?`<span class="tag ex">Reference screen</span><br><span class="chip-ex">${x[0]}</span><br>${x[1]}`:`<span class="tag">Candidate</span><br>${x[0]}`}</td>`).join('')}</tr>`).join('');
+}
+function renderEra(){
+  const e=ERAS[eraIdx];
+  document.querySelectorAll('.era-btn').forEach((b,i)=>b.setAttribute('aria-pressed',i===eraIdx));
+  document.querySelectorAll('#evTable tbody tr').forEach((r,i)=>r.classList.toggle('eraon',i===eraIdx));
+  document.getElementById('eraNote').textContent=`${e.name} · ${e.dates} · film chapter ${e.ch}`;
+  renderMatrix();
+}
+
+const TABS=[
+ {k:'Timeline',sub:'film + era sheet'},
+ {k:'Map',sub:'where it happened'},
+ {k:'Stories',sub:'curated reads'},
+ {k:'Saved',sub:'your queue'}
+];
+const DEPTHS=[
+ {k:'Depth 1 · Glance',sub:'under 10 s, no scrolling'},
+ {k:'Depth 2 · Read',sub:'30 s to 2 min'},
+ {k:'Depth 3 · Research',sub:'self-paced'}
+];
+// [shows(era), tags, enters, film, back, state]
+const CELLS=[
+ [ e=>`${e.name} header and dates, 3-line summary, Key evidence chips (${e.ev.map(x=>x[0]).join(' · ')}), map thumbnail.`, ['Era title','Summary lines','Key evidence','Map thumbnail'], 'Pull the sheet handle, or tap Peek ↑ on a cue pill.','Docked in the 72 px mini-player, paused.','Resume (−5s Replay).','s3b' ],
+ [ e=>`One drawer open: Places, People or Primary sources. Each row has a name, a one-line fact and ▶ Jump.`, ['Places','People','Primary sources'], 'Tap a drawer row.','Docked, paused.','Resume, or ▶ Jump to Timestamp.','s3b' ],
+ [ e=>`Entity detail page: full text, transcription or translation, provenance, related entities, ▶ Jump to Timestamp.`, ['Drawer rows'], 'Tap an entity row.','Docked, paused.','Back chip returns to the drawer; Resume returns to the film.','s4' ],
+ [ e=>`Map filtered to ${e.name} sites. The reference thumbnail expands into pins for this era.`, ['Map thumbnail','Era rail'], 'Tap the Map tab or the map thumbnail.','Docked, paused.','Resume.','s3b' ],
+ [ e=>`Pin card: place name, evidence chips and ▶ Jump to the film moment that shows it.`, ['Places','Key evidence'], 'Tap a pin.','Docked, paused.','▶ Jump, or close the card.','s4' ],
+ [ e=>`Full-screen map with layers by evidence type, a place page and an era slider tied to the rail.`, ['Era rail','Key evidence','Places'], 'Expand the pin card.','Docked, paused.','Back to Timeline tab; Resume.','s4' ],
+ [ e=>`Story cards for ${e.name}: title, read time and the film timestamps they cover.`, ['Era title','Summary lines'], 'Tap the Stories tab.','Docked, paused.','Resume.','s3b' ],
+ [ e=>`A story opens as a half sheet. Each paragraph is anchored to a film timestamp, and tapping it gives ▶ Jump.`, ['Primary sources','People'], 'Tap a story card.','Docked, paused.','▶ Jump, or drag down for Resume.','s4' ],
+ [ e=>`Full-screen long read with inline sources and links to Places and People.`, ['Primary sources','Places','People'], 'Tap “Read in full”.','Docked, paused.','Back to the story list; Resume.','s4' ],
+ [ e=>`Badge count on the tab, and a list of saved Moment Chips grouped by era, each with its film timestamp.`, ['Saved','Moment chips'], 'Tap + Save (Mode A) while watching; open the tab later.','Playing untouched while saving.','Nothing to return from.','s3a' ],
+ [ e=>`Tap an item for a preview sheet: the same 3 bullets and evidence pills as a live peek.`, ['Summary lines','Key evidence'], 'Tap a saved item.','Docked, paused.','Resume.','s3b' ],
+ [ e=>`Open the entity in the drawer, or choose “Revisit in film” to play from the saved sentence.`, ['Drawer rows','Video player'], 'Tap “Revisit in film”.','Scrubs to the saved timestamp.','Resume plays from the sentence start.','s4' ]
+];
+let cellSel=0;
+function renderMatrix(){
+  const e=ERAS[eraIdx];
+  let h=`<div class="h"></div>`+DEPTHS.map(d=>`<div class="h"><span class="lbl">${d.k.split(' · ')[0]}</span><b>${d.k.split(' · ')[1]}</b><small>${d.sub}</small></div>`).join('');
+  TABS.forEach((t,ti)=>{
+    h+=`<div class="rh${ti===3?' last':''}"><b>${t.k}</b><span>${t.sub}</span></div>`;
+    DEPTHS.forEach((d,di)=>{const i=ti*3+di,c=CELLS[i];
+      h+=`<button class="c${ti===3?' last':''}" data-i="${i}" aria-pressed="${i===cellSel}">${c[0](e)}<span class="tags">${c[1].map(x=>`<i>${x}</i>`).join('')}</span></button>`});
+  });
+  document.getElementById('mx').innerHTML=h;
+  document.querySelectorAll('#mx .c').forEach(b=>b.addEventListener('click',()=>{cellSel=+b.dataset.i;renderMatrix()}));
+  const c=CELLS[cellSel],ti=Math.floor(cellSel/3),di=cellSel%3;
+  document.getElementById('cdetail').innerHTML=`
+   <div><span class="lbl">Selected</span><b>${TABS[ti].k} · ${DEPTHS[di].k.split(' · ')[1]}</b><p style="margin-top:4px;color:#CFC7B6">${e.name}, ${e.dates}</p></div>
+   <div><span class="lbl">Enters via</span><p>${c[2]}</p></div>
+   <div><span class="lbl">Film is</span><p>${c[3]}</p></div>
+   <div><span class="lbl">Way back</span><p>${c[4]}</p><button class="stref" data-s="${c[5]}">See ${SD[c[5]].k} ↑</button></div>`;
+  document.querySelector('#cdetail .stref').addEventListener('click',ev=>gotoState(ev.currentTarget.dataset.s,true));
+}
+
+/* =========================================================
+   Section 4 — decision matrix
+   ========================================================= */
+const WHY=[
+ ['Context loss','Forgetting the narrator’s sentence after reading a 2-minute inscription.','The video resumes at the pause point, often mid-sentence. The viewer guesses or drags the scrubber back.','<strong>Automatic −5 s Context Replay on Resume.</strong> Playback restarts at the sentence start, with replayed words highlighted.','s5'],
+ ['Attention','Pausing the film for a 5-second curiosity breaks the story.','Any related link either pauses the video or navigates away.','<strong>One-tap Save, no pause.</strong> The item waits in Saved with its timestamp. Cost: one tap.','s3a'],
+ ['Attention','Video and text compete for the same eyes.','An article sits below a video that keeps playing, so neither gets full attention.','<strong>One foreground stream at a time.</strong> Reading docks the video to 72 px and pauses it. Resuming folds the sheet away.','s3b'],
+ ['Navigation','The text never says which moment of the film it belongs to.','A separate article with no link back to the film.','<strong>▶ Jump to Timestamp on every entity</strong>: places, people, sources, map pins, story paragraphs and saved items.','s4'],
+ ['Navigation','Following a link loses the viewer’s place.','The link opens a new page. Back reloads the video at 0:00 or at a stale position.','<strong>Everything opens in place</strong> in the drawer. After any jump a “Back to 04:12” chip holds the old position for 10 s.','s4'],
+ ['Timing','Cues arrive too early, too late, or over the narration, so viewers learn to ignore them.','Related links are always visible, or pop up at arbitrary times.','<strong>Cue pills are authored on sentence boundaries:</strong> 8 s window, one at a time, 20 s apart, above the captions.','s2'],
+ ['Structure','The film is linear but research is not. Changing era in one place does not change it in the other.','Chapter list and article tabs run separately.','<strong>The era rail is a shared spine.</strong> Tapping an era seeks the film; film progress changes the era; swiping the sheet does both.','s4'],
+ ['Accidental input','Brushing the text area during playback pauses the film.','Any touch on the text region steals focus from the video.','<strong>Pause commits only after 64 px of drag</strong> or a quick flick. Early release snaps back without pausing.','s1'],
+ ['Retention','Saved items are bookmarks to pages, not to moments.','A saved article loses its link to the scene that prompted it.','<strong>Saved stores entity, era and film timestamp</strong>, so “Revisit in film” lands on the right sentence.','s3a'],
+ ['Access','Timed cues exclude people who need more time.','A fixed pop-up that vanishes.','<strong>Window extends to 15 s</strong> with a screen reader or switch control. Every entity is also reachable from the drawers without waiting for a cue.','s2']
+];
+function buildWhy(){
+  const cats=['All',...new Set(WHY.map(w=>w[0]))];
+  const f=document.getElementById('filters');
+  f.innerHTML=cats.map((c,i)=>`<button data-c="${c}" aria-pressed="${i===0}">${c}${c==='All'?` · ${WHY.length}`:''}</button>`).join('');
+  document.querySelector('#dm tbody').innerHTML=WHY.map(w=>`<tr data-c="${w[0]}"><td><span class="cat">${w[0]}</span></td><td class="prob">${w[1]}</td><td class="std">${w[2]}</td><td class="sol">${w[3]}</td><td class="go"><button class="btn-link" data-s="${w[4]}">${SD[w[4]].k} →</button></td></tr>`).join('');
+  f.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    f.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    document.querySelectorAll('#dm tbody tr').forEach(r=>r.hidden=!(b.dataset.c==='All'||r.dataset.c===b.dataset.c));
+  }));
+  document.querySelectorAll('#dm .go button').forEach(b=>b.addEventListener('click',()=>gotoState(b.dataset.s,true)));
+}
+
+/* nav highlight */
+const secs=['modes','states','ia','why'].map(id=>document.getElementById(id));
+const navA=[...document.querySelectorAll('.nav a')];
+const navIO=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting)navA.forEach(a=>a.classList.toggle('cur',a.getAttribute('href')==='#'+en.target.id))})},{rootMargin:'-30% 0px -60% 0px'});
+secs.forEach(s=>navIO.observe(s));
+
+/* init */
+buildNodes();buildInv();buildEras();buildWhy();
+showMode('A');calc();renderEra();setActive('s1');
+requestAnimationFrame(drawLinks);
+window.addEventListener('resize',drawLinks);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawLinks);
+window.addEventListener('load',drawLinks);
+</script>
+</body>
+</html>
